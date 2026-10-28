@@ -8,7 +8,7 @@
 #  Prerequisites on EC2:
 #    • Ubuntu 22.04 or 24.04 LTS
 #    • Security Group:  inbound TCP 80 OPEN,  TCP 22 OPEN (your IP only)
-#                       TCP 5432 NOT OPEN,    TCP 8000 NOT OPEN
+#                       TCP 3306 NOT OPEN,    TCP 8000 NOT OPEN
 # =============================================================================
 set -euo pipefail
 
@@ -73,9 +73,9 @@ echo ""
 echo "=== Port exposure summary ==="
 echo "  Port  80  → PUBLIC  (nginx: React SPA + /api reverse-proxy)"
 echo "  Port 8000 → PRIVATE (FastAPI – internal Docker network only)"
-echo "  Port 5432 → PRIVATE (PostgreSQL – internal Docker network only)"
+echo "  Port 3306 → PRIVATE (MySQL – internal Docker network only)"
 echo ""
-echo "  Verify with:  sudo ss -tlnp | grep -E '80|8000|5432'"
+echo "  Verify with:  sudo ss -tlnp | grep -E '80|8000|3306'"
 echo ""
 echo "✅ Deployment complete – visit http://$(curl -s ifconfig.me)"
 

@@ -19,8 +19,8 @@ Your Laptop  ──git push──▶  GitHub
                     │  └──────┬────────┘  │
                     │         │           │
                     │  ┌──────▼────────┐  │
-                    │  │ PostgreSQL    │  │  ← PRIVATE (no host port)
-                    │  │    :5432      │  │
+                    │  │ MySQL        │  │  ← PRIVATE (no host port)
+                    │  │    :3306      │  │
                     │  └───────────────┘  │
                     └─────────────────────┘
 ```
@@ -54,7 +54,7 @@ During instance launch, under **"Network settings"** → **"Edit"**:
 | HTTP | 80 | **0.0.0.0/0** | Public web access |
 
 > [!CAUTION]
-> Do **NOT** add rules for port 5432 (PostgreSQL) or 8000 (FastAPI).
+> Do **NOT** add rules for port 3306 (MySQL) or 8000 (FastAPI).
 > Those stay 100% private inside Docker — never expose them.
 
 ---
@@ -163,7 +163,7 @@ nano .env
 **Set these values in `.env`:**
 
 ```bash
-# PostgreSQL credentials
+# MySQL credentials
 DB_NAME=college_attendance
 DB_USER=attendance_user
 DB_PASSWORD=MyStr0ng@Pass123        # ← CHANGE THIS to something strong
@@ -190,7 +190,7 @@ sudo docker compose up -d --build
 ```
 
 This will:
-1. 🐘 Pull **PostgreSQL 16** image and initialize your schema
+1. Pull **MySQL 8.4** image and initialize your schema
 2. 🐍 **Build** the FastAPI image from `backend/Dockerfile`
 3. ⚛️ **Build** the React app (npm build) and package into nginx image
 4. 🚀 Start all 3 containers, in the right order (db → backend → frontend)
@@ -255,15 +255,15 @@ flowchart TD
         subgraph SG["🛡️ Security Group"]
             P80["Port 80 ✅ OPEN"]
             P22["Port 22 ✅ OPEN (your IP)"]
-            P5432["Port 5432 🔒 BLOCKED"]
+            P3306["Port 3306 🔒 BLOCKED"]
             P8000["Port 8000 🔒 BLOCKED"]
         end
 
         subgraph DC["🐳 Docker Compose"]
             FE["frontend\nnginx:80\nReact SPA"]
             BE["backend\nFastAPI:8000"]
-            DB["db\nPostgreSQL:5432"]
-            VOL[("📀 postgres_data\nvolume")]
+            DB["db\nMySQL:3306"]
+            VOL[("📀 mysql_data\nvolume")]
         end
 
         B --> SG
