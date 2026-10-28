@@ -1,0 +1,87 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#  College Attendance – Docker Compose
+#  Three services: db (PostgreSQL), backend (FastAPI), frontend (React + nginx)
+#
+#  Port exposure:
+#    • Port 80  → PUBLIC  (nginx serves React SPA + proxies /api to FastAPI)
+#    • Port 5432 → PRIVATE (PostgreSQL never bound to host; internal network only)
+#    • Port 8000 → PRIVATE (FastAPI never bound to host; reached via nginx /api)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-college_attendance}
+      POSTGRES_USER:     ${DB_USER:-attendance_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+    volumes:
+      # Named volume keeps data across container restarts
+      - postgres_data:/var/lib/postgresql/data
+      # Run the schema on first boot (idempotent – uses IF NOT EXISTS)
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    networks:
+      - internal
+    # ⚠ NO ports: block → PostgreSQL is NOT reachable from outside the host
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-attendance_user} -d ${DB_NAME:-college_attendance}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST:         db
+      DB_PORT:         5432
+      DB_NAME:         ${DB_NAME:-college_attendance}
+      DB_USER:         ${DB_USER:-attendance_user}
+      DB_PASSWORD:     ${DB_PASSWORD:?DB_PASSWORD must be set}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    # ⚠ NO ports: block → port 8000 is NOT reachable from outside the host
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── React + nginx (public entry point) ────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # /api is a relative path; nginx rewrites it to backend:8000
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    ports:
+      - "80:80"      # ← Only port exposed to the EC2 host / internet
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+
+# ── Shared private network ─────────────────────────────────────────────────
+networks:
+  internal:
+    driver: bridge
+
+# ── Persistent PostgreSQL data ─────────────────────────────────────────────
+volumes:
+  postgres_data:
+

@@ -6,7 +6,7 @@ from sqlalchemy import URL
 
 class Settings(BaseSettings):
     db_host: str = "localhost"
-    db_port: int = 3306
+    db_port: int = 5432
     db_name: str = "college_attendance"
     db_user: str = "attendance_user"
     db_password: str = ""
@@ -17,13 +17,12 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> URL:
         return URL.create(
-            drivername="mysql+pymysql",
+            drivername="postgresql+psycopg2",
             username=self.db_user,
             password=self.db_password,
             host=self.db_host,
             port=self.db_port,
             database=self.db_name,
-            query={"charset": "utf8mb4"},
         )
 
     @property

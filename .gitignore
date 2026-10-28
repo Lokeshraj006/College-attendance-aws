@@ -22,3 +22,6 @@ frontend/dist/
 
 # IDE
 .vscode/
+
+# Docker build artifacts (not secrets, but noisy)
+frontend/nginx.conf~

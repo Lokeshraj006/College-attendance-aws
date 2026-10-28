@@ -1,33 +1,30 @@
-CREATE DATABASE IF NOT EXISTS college_attendance
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE college_attendance;
+-- PostgreSQL initialization script
+-- Safe to re-run: uses IF NOT EXISTS; never drops existing data.
 
 CREATE TABLE IF NOT EXISTS students (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id VARCHAR(30) NOT NULL UNIQUE,
-  name VARCHAR(120) NOT NULL,
-  department VARCHAR(120) NOT NULL,
-  academic_year VARCHAR(30) NOT NULL,
-  INDEX ix_students_student_id (student_id)
+  id            SERIAL PRIMARY KEY,
+  student_id    VARCHAR(30)  NOT NULL UNIQUE,
+  name          VARCHAR(120) NOT NULL,
+  department    VARCHAR(120) NOT NULL,
+  academic_year VARCHAR(30)  NOT NULL
 );
+CREATE INDEX IF NOT EXISTS ix_students_student_id ON students (student_id);
 
 CREATE TABLE IF NOT EXISTS courses (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  course_id VARCHAR(30) NOT NULL UNIQUE,
-  course_name VARCHAR(160) NOT NULL,
-  INDEX ix_courses_course_id (course_id)
+  id          SERIAL PRIMARY KEY,
+  course_id   VARCHAR(30)  NOT NULL UNIQUE,
+  course_name VARCHAR(160) NOT NULL
 );
+CREATE INDEX IF NOT EXISTS ix_courses_course_id ON courses (course_id);
 
 CREATE TABLE IF NOT EXISTS attendance (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  course_id INT NOT NULL,
+  id              SERIAL PRIMARY KEY,
+  student_id      INT  NOT NULL REFERENCES students(id),
+  course_id       INT  NOT NULL REFERENCES courses(id),
   attendance_date DATE NOT NULL,
-  status ENUM('Present', 'Absent') NOT NULL,
-  CONSTRAINT fk_attendance_student FOREIGN KEY (student_id) REFERENCES students(id),
-  CONSTRAINT fk_attendance_course FOREIGN KEY (course_id) REFERENCES courses(id),
-  CONSTRAINT uq_attendance_day UNIQUE (student_id, course_id, attendance_date),
-  INDEX ix_attendance_date (attendance_date)
+  status          VARCHAR(10) NOT NULL CHECK (status IN ('Present', 'Absent')),
+  CONSTRAINT uq_attendance_day UNIQUE (student_id, course_id, attendance_date)
 );
+CREATE INDEX IF NOT EXISTS ix_attendance_date     ON attendance (attendance_date);
+CREATE INDEX IF NOT EXISTS ix_attendance_student  ON attendance (student_id);
+CREATE INDEX IF NOT EXISTS ix_attendance_course   ON attendance (course_id);
