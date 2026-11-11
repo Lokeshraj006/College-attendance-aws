@@ -93,6 +93,47 @@ Open `http://localhost`. The frontend proxies `/api/...` requests to the backend
 
 The SQL file is run only when MySQL initializes an empty data directory. Existing data in the named volume is preserved. Do not use `docker compose down -v` unless you intentionally want to delete that Docker volume. To migrate an existing local database, export it first with `mysqldump`, then restore the dump into the container with `docker compose exec -T db mysql ...`; do not overwrite or drop data without a verified backup.
 
+## Kubernetes with Minikube
+
+The Kubernetes manifests are in [`k8s/`](./k8s/). They are an additional deployment option and do not replace Docker Compose or the EC2 deployment. The frontend keeps using `/api`; its existing NGINX configuration proxies that path to the Kubernetes `backend` Service. The backend connects to the internal `mysql` Service, and MySQL is not exposed outside the cluster.
+
+Build and push the existing Dockerfiles to Docker Hub from the repository root. Replace `yourdockerhubusername` with your Docker Hub username:
+
+```powershell
+docker login
+docker build -t yourdockerhubusername/college-attendance-backend:latest .\backend
+docker build -t yourdockerhubusername/college-attendance-frontend:latest .\frontend
+docker push yourdockerhubusername/college-attendance-backend:latest
+docker push yourdockerhubusername/college-attendance-frontend:latest
+```
+
+Start Minikube, create the database Secret without committing passwords, and apply the manifests:
+
+```powershell
+minikube start
+kubectl create secret generic attendance-db-secret `
+  --from-literal=DB_PASSWORD='replace-with-a-strong-password' `
+  --from-literal=MYSQL_ROOT_PASSWORD='replace-with-a-different-strong-password'
+kubectl apply -f .\k8s\configmap.yaml
+kubectl apply -f .\k8s\service.yaml
+kubectl apply -f .\k8s\deployment.yaml
+kubectl get pods
+kubectl get services
+```
+
+`configmap.yaml` contains the existing non-destructive [`database/schema.sql`](./database/schema.sql) because the official MySQL image only runs initialization scripts when its data directory is empty. The `mysql-pvc` keeps the data across pod restarts. Do not delete the PVC unless the database data has been backed up and removal is intentional.
+
+Wait for the deployments and open the frontend through its NodePort:
+
+```powershell
+kubectl rollout status deployment/mysql
+kubectl rollout status deployment/backend
+kubectl rollout status deployment/frontend
+minikube service frontend
+```
+
+For troubleshooting, inspect `kubectl get pods`, `kubectl describe pod <pod-name>`, and `kubectl logs deployment/backend`. If the Secret already exists, use `kubectl delete secret attendance-db-secret` only when intentionally replacing it, then recreate it before restarting the deployments.
+
 ## Deploying to Ubuntu EC2
 
 1. Create an Ubuntu EC2 instance and allow inbound TCP 22 only from your IP, and TCP 80 from the internet. Add TCP 443 later when HTTPS is configured. Do not open TCP 3306.

@@ -3,19 +3,21 @@ FROM python:3.12-slim AS builder
 WORKDIR /install
 
 RUN apt-get update && apt-get install -y --no-install-recommends gcc && rm -rf /var/lib/apt/lists/*
+RUN python -m venv /opt/venv
 
 COPY requirements.txt .
-RUN pip install --prefix=/deps --no-cache-dir -r requirements.txt
+RUN /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY --from=builder /deps /usr/local
+COPY --from=builder /opt/venv /opt/venv
 COPY app/ ./app/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 USER appuser
